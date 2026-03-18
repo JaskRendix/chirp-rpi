@@ -1,0 +1,7 @@
+smbus2
+fastapi
+uvicorn
+pydantic
+prometheus_client
+paho-mqtt
+python-dateutil

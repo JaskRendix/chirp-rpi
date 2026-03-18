@@ -1,0 +1,8 @@
+[project]
+name = "chirp-rpi"
+version = "0.1.0"
+description = "Chirp soil sensor driver and tools"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["."]
