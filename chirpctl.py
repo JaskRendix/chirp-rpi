@@ -8,6 +8,7 @@ import sys
 import main_mqtt
 import main_prom
 import main_rest
+from chirp_sensor.calibrator import AutoCalibrator
 from chirp_sensor.config import Config, load_config
 from chirp_sensor.driver import Chirp, MoistureCalibration
 
@@ -121,6 +122,20 @@ def cmd_prom(args: argparse.Namespace) -> None:
     main_prom.main()
 
 
+def cmd_calibrate_auto(args: argparse.Namespace) -> None:
+    cfg = load_config()
+    sensor = Chirp(bus=cfg.bus, address=cfg.address)
+    cal = AutoCalibrator(sensor)
+    result = cal.run()
+
+    print("\nSuggested chirp.toml values:")
+    print(f"dry = {result.dry}")
+    print(f"wet = {result.wet}")
+
+    if args.write:
+        cal.write_to_toml("chirp.toml", result)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="chirpctl",
@@ -147,6 +162,15 @@ def build_parser() -> argparse.ArgumentParser:
     cal_sub = cal.add_subparsers(dest="cal_cmd")
     cal_sub.add_parser("dry").set_defaults(func=cmd_calibrate_dry)
     cal_sub.add_parser("wet").set_defaults(func=cmd_calibrate_wet)
+
+    # Auto-calibration
+    cal_auto = cal_sub.add_parser("auto", help="Auto-calibrate dry/wet values")
+    cal_auto.add_argument(
+        "--write",
+        action="store_true",
+        help="Write calibration values directly into chirp.toml",
+    )
+    cal_auto.set_defaults(func=cmd_calibrate_auto)
 
     # Device management
     sub.add_parser("sleep").set_defaults(func=cmd_sleep)
