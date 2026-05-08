@@ -1,7 +1,7 @@
 # Chirp‑RPI — Modern Python Driver and Tools for the Chirp Soil Sensor
 
 Chirp‑RPI is a modern Python 3.12+ driver and toolkit for the **Chirp capacitive soil‑moisture sensor**, which also measures temperature and ambient light.  
-It provides a clean, typed driver, calibration utilities, structured readings, a command‑line interface, and optional integrations such as MQTT, Prometheus, and a REST API.
+It provides a typed driver, calibration utilities, structured readings, a command‑line interface, and optional integrations such as MQTT, Prometheus, and a REST API.
 
 This project is a modernized and extended rewrite of the original driver by @ageir:  
 [https://github.com/ageir/chirp-rpi](https://github.com/ageir/chirp-rpi)
@@ -26,10 +26,11 @@ Hardware design by Albertas Mickėnas (Catnip Electronics):
 
 ### Additional tools
 - SoilAgent for drying‑rate estimation and moisture‑level prediction
+- Auto‑calibration helper with stability detection
 - MQTT publisher for home automation
 - Prometheus exporter for monitoring dashboards
 - FastAPI REST server for remote access
-- **`chirpctl` command‑line interface (argparse)**
+- `chirpctl` command‑line interface (argparse)
 
 ---
 
@@ -58,9 +59,42 @@ Requirements:
 
 ---
 
+## Configuration (`chirp.toml`)
+
+All tools load configuration from a local `chirp.toml` file:
+
+```toml
+bus = 1
+address = 0x20
+
+dry = 240
+wet = 750
+
+mqtt_host = "localhost"
+mqtt_port = 1883
+mqtt_base = "home/chirp/basil"
+
+prom_port = 9100
+rest_port = 8000
+```
+
+CLI flags override values in the file:
+
+```bash
+chirpctl --address 0x21 read
+```
+
+The auto‑calibration helper can update this file automatically:
+
+```bash
+chirpctl calibrate auto --write
+```
+
+---
+
 ## Command‑Line Interface (`chirpctl`)
 
-The project includes a lightweight argparse‑based CLI for quick sensor access, debugging, calibration, and running services.
+The CLI provides quick access to sensor readings, calibration, debugging, and running services.
 
 ### Basic usage
 
@@ -77,6 +111,8 @@ chirpctl version
 ```bash
 chirpctl calibrate dry
 chirpctl calibrate wet
+chirpctl calibrate auto
+chirpctl calibrate auto --write
 ```
 
 ### Device management
@@ -104,9 +140,9 @@ chirpctl prom
 Global options:
 
 ```bash
---address 0x20   # I2C address
---bus 1          # I2C bus
---dry 240 --wet 750   # calibration values
+--address 0x20
+--bus 1
+--dry 240 --wet 750
 ```
 
 ---
@@ -115,11 +151,10 @@ Global options:
 
 To convert raw capacitance into moisture percentage, calibration is required.
 
-### Procedure
-1. Let the sensor stabilize in dry air; record the lowest raw value.
-2. Submerge the sensing area in water; record the highest raw value.
-3. Create a calibration object using these values.
-4. Use the calibration in the driver or CLI.
+### Manual procedure
+1. Let the sensor stabilize in dry air; record the lowest raw value.  
+2. Submerge the sensing area in water; record the highest raw value.  
+3. Use these values to create a calibration object.
 
 ### Example
 
@@ -128,6 +163,25 @@ from chirp_sensor.driver import MoistureCalibration, Chirp
 
 cal = MoistureCalibration(dry=240, wet=750)
 sensor = Chirp(address=0x20, calibration=cal)
+```
+
+### Auto‑calibration
+
+Chirp‑RPI includes an interactive auto‑calibration helper:
+
+```bash
+chirpctl calibrate auto
+```
+
+The tool:
+
+- samples moisture readings  
+- detects stability automatically  
+- computes dry and wet calibration points  
+- optionally writes them to `chirp.toml`:
+
+```bash
+chirpctl calibrate auto --write
 ```
 
 ---
@@ -180,7 +234,6 @@ sensor = Chirp(
 
 ```python
 reading = sensor.read()
-print(reading.moisture, reading.moisture_percent, reading.temperature_c, reading.light)
 ```
 
 #### Read individual values
@@ -208,7 +261,7 @@ with Chirp(address=0x20) as sensor:
 
 ## SoilAgent
 
-The SoilAgent tracks moisture history and estimates:
+Tracks moisture history and estimates:
 
 - Drying rate (% per hour)
 - Hours until a target moisture level is reached
@@ -217,14 +270,6 @@ Example:
 
 ```python
 from chirp_sensor.agent import SoilAgent
-from chirp_sensor.driver import Chirp, MoistureCalibration
-
-sensor = Chirp(address=0x20, calibration=MoistureCalibration(240, 750))
-agent = SoilAgent(sensor)
-
-reading = agent.sample()
-rate = agent.estimate_drying_rate()
-eta = agent.predict_hours_until(30.0)
 ```
 
 ---
@@ -239,18 +284,6 @@ Run:
 python main_mqtt.py
 ```
 
-Example payload:
-
-```json
-{
-  "moisture_raw": 255,
-  "moisture_percent": 2.9,
-  "temperature_c": 25.8,
-  "light": 8603,
-  "timestamp": "2026-05-08T15:55:00"
-}
-```
-
 ---
 
 ## Prometheus Exporter
@@ -262,13 +295,6 @@ Run:
 ```bash
 python main_prom.py
 ```
-
-Metrics include:
-
-- chirp_moisture_raw
-- chirp_moisture_percent
-- chirp_temperature_celsius
-- chirp_light
 
 ---
 
@@ -286,12 +312,7 @@ Endpoints:
 - `/moisture`
 - `/temperature`
 - `/light`
-
-Example:
-
-```bash
-curl http://localhost:8000/read
-```
+- `/health`
 
 ---
 
@@ -303,14 +324,14 @@ Run the full test suite:
 pytest -q
 ```
 
-GitHub Actions automatically runs:
+Includes:
 
 - Driver tests  
 - Calibration tests  
-- Edge‑case tests  
-- Failure‑mode tests  
+- Auto‑calibration tests  
+- Error‑condition tests  
 - Integration tests for MQTT, REST, Prometheus  
-- **CLI tests**
+- CLI tests  
 
 ---
 
@@ -322,6 +343,8 @@ chirp-rpi/
 ├── chirp_sensor/
 │   ├── driver.py
 │   ├── agent.py
+│   ├── calibrator.py
+│   ├── config.py
 │
 ├── chirpctl.py
 ├── main_agent.py
@@ -329,6 +352,7 @@ chirp-rpi/
 ├── main_prom.py
 ├── main_rest.py
 │
+├── chirp.toml
 ├── tests/
 ├── pyproject.toml
 └── README.md
@@ -349,7 +373,6 @@ This project builds on earlier work by:
 
 - Albertas Mickėnas (hardware)
 - @ageir — original Python driver  
-  [https://github.com/ageir/chirp-rpi](https://github.com/ageir/chirp-rpi)
 - Jasper Wallace and Daniel Tamm — early implementations
 
 Modernized and extended by the current maintainers.
