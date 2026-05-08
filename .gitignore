@@ -1,0 +1,26 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Packaging artifacts
+*.egg-info/
+dist/
+build/
+
+# Test artifacts (no coverage)
+.pytest_cache/
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

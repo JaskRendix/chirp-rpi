@@ -1,0 +1,49 @@
+# ================================
+# Chirp‑RPI Configuration File
+# ================================
+
+# ----------------
+# Sensor settings
+# ----------------
+
+# I²C bus number (1 on Raspberry Pi)
+bus = 1
+
+# I²C address of the Chirp sensor
+address = 0x20
+
+# Moisture calibration values
+# dry  = raw reading in dry air
+# wet  = raw reading fully submerged in water
+dry = 240
+wet = 750
+
+
+# ----------------
+# MQTT settings
+# ----------------
+
+# MQTT broker hostname or IP
+mqtt_host = "localhost"
+
+# MQTT port (default Mosquitto port)
+mqtt_port = 1883
+
+# Base MQTT topic for this sensor
+mqtt_base = "home/chirp/basil"
+
+
+# ----------------
+# Prometheus exporter
+# ----------------
+
+# Port where the Prometheus exporter listens
+prom_port = 9100
+
+
+# ----------------
+# REST API (FastAPI)
+# ----------------
+
+# Port where the REST API listens
+rest_port = 8000

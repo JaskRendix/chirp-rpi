@@ -1,0 +1,62 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import tomllib
+
+# Default search locations
+CONFIG_PATHS = [
+    Path("chirp.toml"),  # project root / working directory
+    Path("/etc/chirp.toml"),  # system-wide config
+]
+
+
+@dataclass
+class Config:
+    bus: int = 1
+    address: int = 0x20
+    dry: int | None = None
+    wet: int | None = None
+
+    mqtt_host: str = "localhost"
+    mqtt_port: int = 1883
+    mqtt_base: str = "home/chirp/sensor"
+
+    prom_port: int = 9100
+    rest_port: int = 8000
+
+
+def load_config() -> Config:
+    """
+    Load chirp.toml from known locations.
+    Missing fields fall back to defaults.
+    """
+    data = {}
+
+    for path in CONFIG_PATHS:
+        if path.exists():
+            with path.open("rb") as f:
+                data = tomllib.load(f)
+            break
+
+    cfg = Config()
+
+    # Sensor settings
+    cfg.bus = data.get("bus", cfg.bus)
+    cfg.address = data.get("address", cfg.address)
+    cfg.dry = data.get("dry", cfg.dry)
+    cfg.wet = data.get("wet", cfg.wet)
+
+    # MQTT
+    cfg.mqtt_host = data.get("mqtt_host", cfg.mqtt_host)
+    cfg.mqtt_port = data.get("mqtt_port", cfg.mqtt_port)
+    cfg.mqtt_base = data.get("mqtt_base", cfg.mqtt_base)
+
+    # Prometheus
+    cfg.prom_port = data.get("prom_port", cfg.prom_port)
+
+    # REST API
+    cfg.rest_port = data.get("rest_port", cfg.rest_port)
+
+    return cfg
