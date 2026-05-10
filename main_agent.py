@@ -6,7 +6,7 @@ from pathlib import Path
 
 from chirp_sensor.agent import SoilAgent
 from chirp_sensor.config import Config, load_config
-from chirp_sensor.driver import Chirp, MoistureCalibration
+from chirp_sensor.driver import Chirp, MoistureCalibration, scan_for_chirp
 
 if __name__ == "__main__":
     cfg: Config = load_config()
@@ -17,37 +17,43 @@ if __name__ == "__main__":
         else None
     )
 
-    sensor = Chirp(
-        bus=cfg.bus,
-        address=cfg.address,
-        calibration=calibration,
-        busy_sleep=cfg.busy_sleep,
-        read_timeout_s=cfg.read_timeout_s,
-    )
+    addresses = scan_for_chirp(cfg.bus)
+    agents = []
 
-    agent = SoilAgent(
-        sensor,
-        smoothing_alpha=cfg.smoothing_alpha,
-        watering_threshold=cfg.watering_threshold,
-        min_hours_for_rate=cfg.min_hours_for_rate,
-        persist_path=Path(cfg.persist_path) if cfg.persist_path else None,
-    )
+    for addr in addresses:
+        sensor = Chirp(
+            bus=cfg.bus,
+            address=addr,
+            calibration=calibration,
+            busy_sleep=cfg.busy_sleep,
+            read_timeout_s=cfg.read_timeout_s,
+        )
+
+        agent = SoilAgent(
+            sensor,
+            smoothing_alpha=cfg.smoothing_alpha,
+            watering_threshold=cfg.watering_threshold,
+            min_hours_for_rate=cfg.min_hours_for_rate,
+            persist_path=Path(cfg.persist_path) if cfg.persist_path else None,
+        )
+        agents.append(agent)
 
     try:
         while True:
-            r = agent.sample()
-            rate = agent.estimate_drying_rate()
-            eta = agent.predict_hours_until(30.0)
+            for agent in agents:
+                r = agent.sample()
+                rate = agent.estimate_drying_rate()
+                eta = agent.predict_hours_until(30.0)
 
-            print(
-                f"[{r.timestamp.isoformat()}] "
-                f"moist={r.moisture_percent}% temp={r.temperature_c}C light={r.light}"
-            )
-            if rate is not None:
-                print(f"  drying_rate ≈ {rate:.2f}%/h")
-            if eta is not None:
-                print(f"  ETA to 30% ≈ {eta:.1f} h")
-            print()
+                print(
+                    f"[0x{agent.sensor.address:02X}] "
+                    f"moist={r.moisture_percent}% temp={r.temperature_c}C light={r.light}"
+                )
+                if rate is not None:
+                    print(f"  drying_rate ≈ {rate:.2f}%/h")
+                if eta is not None:
+                    print(f"  ETA to 30% ≈ {eta:.1f} h")
+                print()
 
             time.sleep(300)
     except KeyboardInterrupt:

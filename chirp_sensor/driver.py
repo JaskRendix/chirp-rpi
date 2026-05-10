@@ -167,3 +167,17 @@ class Chirp:
             light=light,
             timestamp=ts,
         )
+
+
+def scan_for_chirp(bus: int = 1) -> list[int]:
+    """Return a list of I2C addresses where a Chirp sensor responds."""
+    found: list[int] = []
+    with SMBus(bus) as b:
+        for addr in range(3, 120):
+            try:
+                # Probe GET_VERSION (safe, read‑only)
+                b.read_byte_data(addr, Chirp._GET_VERSION)
+                found.append(addr)
+            except OSError:
+                pass
+    return found

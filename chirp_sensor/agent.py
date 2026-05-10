@@ -45,9 +45,6 @@ class SoilAgent:
         if persist_path and persist_path.exists():
             self._load_history()
 
-    # ------------------------------------------------------------
-    # Persistence
-    # ------------------------------------------------------------
     def _save_history(self) -> None:
         if not self.persist_path:
             return
@@ -70,9 +67,6 @@ class SoilAgent:
         except Exception:
             pass
 
-    # ------------------------------------------------------------
-    # Sampling
-    # ------------------------------------------------------------
     def sample(self) -> ChirpReading:
         r = self.sensor.read()
         if r.moisture_percent is None:
@@ -101,9 +95,6 @@ class SoilAgent:
         self._save_history()
         return r
 
-    # ------------------------------------------------------------
-    # First–last drying rate (test-compatible)
-    # ------------------------------------------------------------
     def estimate_drying_rate(self) -> float | None:
         if len(self.history) < 2:
             return None
@@ -121,9 +112,6 @@ class SoilAgent:
 
         return drop / dt_hours
 
-    # ------------------------------------------------------------
-    # Prediction
-    # ------------------------------------------------------------
     def predict_hours_until(self, target_percent: float) -> float | None:
         if not self.history:
             return None

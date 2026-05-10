@@ -5,7 +5,6 @@ from pathlib import Path
 
 import tomllib
 
-# Default search locations
 CONFIG_PATHS = [
     Path("chirp.toml"),  # project root / working directory
     Path("/etc/chirp.toml"),  # system-wide config
