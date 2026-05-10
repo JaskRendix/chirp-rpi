@@ -43,10 +43,12 @@ def test_invalid_busy_flag(mock_bus):
 
 
 def test_temperature_read_failure(mock_bus):
-    # Fail on the second temperature read
+    # old temp, then 3 failures (retry attempts)
     mock_bus.read_word_data.side_effect = [
-        0x1000,  # old temp
-        OSError("temp fail"),  # new temp
+        0x1000,
+        OSError("temp fail"),
+        OSError("temp fail"),
+        OSError("temp fail"),
     ]
     mock_bus.read_byte_data.return_value = 0
 
@@ -59,9 +61,11 @@ def test_light_read_failure(mock_bus):
     # moisture old/new, temp old/new
     mock_bus.read_word_data.side_effect = [
         0x1000,
-        0x2000,
+        0x2000,  # moisture
         0x3000,
-        0x4000,
+        0x4000,  # temperature
+        OSError("light failure"),
+        OSError("light failure"),
         OSError("light failure"),
     ]
     mock_bus.read_byte_data.return_value = 0

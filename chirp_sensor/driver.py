@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, TypeVar
 
 from smbus2 import SMBus
+
+T = TypeVar("T")
 
 
 class ChirpTimeoutError(TimeoutError):
@@ -66,10 +70,10 @@ class Chirp:
         self.bus.close()
 
     def _busy(self) -> bool:
-        return self.bus.read_byte_data(self.address, self._GET_BUSY) == 1
+        return self._retry(self.bus.read_byte_data, self.address, self._GET_BUSY) == 1
 
     def _read_reg16(self, reg: int) -> int:
-        val = self.bus.read_word_data(self.address, reg)
+        val = self._retry(self.bus.read_word_data, self.address, reg)
         return (val >> 8) | ((val & 0xFF) << 8)
 
     def _wait_ready(self) -> None:
@@ -84,11 +88,31 @@ class Chirp:
                 )
             time.sleep(self.busy_sleep)
 
+    def _retry(
+        self,
+        func: Callable[..., T],
+        *args: Any,
+        retries: int = 3,
+        **kwargs: Any,
+    ) -> T:
+        """Retry an I2C operation a few times before failing."""
+        last_exc: Exception | None = None
+
+        for _ in range(retries):
+            try:
+                return func(*args, **kwargs)
+            except OSError as exc:
+                last_exc = exc
+                time.sleep(self.busy_sleep)
+
+        assert last_exc is not None
+        raise last_exc
+
     def reset(self) -> None:
-        self.bus.write_byte(self.address, self._RESET)
+        self._retry(self.bus.write_byte, self.address, self._RESET)
 
     def sleep(self) -> None:
-        self.bus.write_byte(self.address, self._SLEEP)
+        self._retry(self.bus.write_byte, self.address, self._SLEEP)
 
     def wake_up(self, wake_time: float = 1.0) -> None:
         try:
@@ -99,18 +123,18 @@ class Chirp:
 
     @property
     def version(self) -> int:
-        return self.bus.read_byte_data(self.address, self._GET_VERSION)
+        return self._retry(self.bus.read_byte_data, self.address, self._GET_VERSION)
 
     @property
     def sensor_address(self) -> int:
-        return self.bus.read_byte_data(self.address, self._GET_ADDRESS)
+        return self._retry(self.bus.read_byte_data, self.address, self._GET_ADDRESS)
 
     @sensor_address.setter
     def sensor_address(self, new_addr: int) -> None:
         if not (3 <= new_addr <= 119):
             raise ValueError("I2C address must be between 3 and 119")
-        self.bus.write_byte_data(self.address, self._SET_ADDRESS, new_addr)
-        self.bus.write_byte_data(self.address, self._SET_ADDRESS, new_addr)
+        self._retry(self.bus.write_byte_data, self.address, self._SET_ADDRESS, new_addr)
+        self._retry(self.bus.write_byte_data, self.address, self._SET_ADDRESS, new_addr)
         self.reset()
         self.address = new_addr
 
@@ -126,7 +150,7 @@ class Chirp:
         return round(raw / 10.0, 1)
 
     def read_light(self) -> int:
-        self.bus.write_byte(self.address, self._MEASURE_LIGHT)
+        self._retry(self.bus.write_byte, self.address, self._MEASURE_LIGHT)
         self._wait_ready()
         return self._read_reg16(self._GET_LIGHT)
 

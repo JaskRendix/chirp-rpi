@@ -256,3 +256,99 @@ def test_timeout_error_message_contains_address(mock_bus):
         sensor.read_moisture()
 
     assert "0x42" in str(exc.value)
+
+
+def test_retry_recovers_from_transient_error(mock_bus):
+    mock_bus.read_word_data.side_effect = [
+        OSError("fail"),  # first attempt fails
+        0x1000,  # retry succeeds (old moisture)
+        0x2000,  # second read (new moisture)
+    ]
+
+    mock_bus.read_byte_data.return_value = 0  # not busy
+
+    sensor = Chirp(bus=1, address=0x20)
+    value = sensor.read_moisture()
+
+    assert value == ((0x2000 >> 8) | ((0x2000 & 0xFF) << 8))
+
+
+def test_retry_exhausts_attempts(mock_bus):
+    mock_bus.read_word_data.side_effect = OSError("fail")
+
+    sensor = Chirp(bus=1, address=0x20)
+
+    with pytest.raises(OSError):
+        sensor.read_moisture()
+
+
+def test_retry_exhausts_attempts(mock_bus):
+    mock_bus.read_word_data.side_effect = OSError("fail")
+
+    sensor = Chirp(bus=1, address=0x20)
+
+    with pytest.raises(OSError):
+        sensor.read_moisture()
+
+
+def test_retry_on_write(mock_bus):
+    mock_bus.write_byte.side_effect = [OSError("fail"), None]
+
+    sensor = Chirp(bus=1, address=0x20)
+    sensor.read_light()  # triggers write + retry
+
+    assert mock_bus.write_byte.call_count == 2
+
+
+def test_retry_no_retry_on_success(mock_bus):
+    mock_bus.read_word_data.return_value = 0x1234
+    mock_bus.read_byte_data.return_value = 0  # not busy
+
+    sensor = Chirp(bus=1, address=0x20)
+    value = sensor.read_moisture()
+
+    assert value > 0
+    assert mock_bus.read_word_data.call_count == 2  # old + new moisture
+
+
+def test_retry_sleeps_between_attempts(mock_bus, mocker):
+    mock_bus.read_word_data.side_effect = OSError("fail")
+    sleep_spy = mocker.spy(__import__("time"), "sleep")
+
+    sensor = Chirp(bus=1, address=0x20)
+
+    with pytest.raises(OSError):
+        sensor.read_moisture()
+
+    # 3 retries → 3 sleeps
+    assert sleep_spy.call_count == 3
+
+
+def test_retry_raises_last_exception(mock_bus):
+    mock_bus.read_word_data.side_effect = [
+        OSError("first"),
+        OSError("second"),
+        OSError("third"),
+    ]
+
+    sensor = Chirp(bus=1, address=0x20)
+
+    with pytest.raises(OSError) as exc:
+        sensor.read_moisture()
+
+    assert "third" in str(exc.value)
+
+
+def test_retry_on_write_byte_data(mock_bus):
+    mock_bus.write_byte_data.side_effect = [
+        OSError("fail"),
+        None,  # first write
+        OSError("fail"),
+        None,  # second write
+    ]
+
+    sensor = Chirp(bus=1, address=0x20)
+    sensor.sensor_address = 0x30
+
+    # 4 calls: fail+success for each of the 2 writes
+    assert mock_bus.write_byte_data.call_count == 4
