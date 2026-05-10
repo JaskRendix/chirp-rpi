@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from chirp_sensor.driver import Chirp, MoistureCalibration
+from chirp_sensor.driver import Chirp, ChirpTimeoutError, MoistureCalibration
 
 
 @pytest.fixture
@@ -213,3 +213,46 @@ def test_address_double_write(mock_bus):
         call for call in mock_bus.write_byte_data.call_args_list if call[0][2] == 0x30
     ]
     assert len(writes) == 2
+
+
+def test_busy_timeout(mock_bus):
+    mock_bus.read_byte_data.return_value = 1
+    mock_bus.read_word_data.return_value = 0x1234
+
+    sensor = Chirp(bus=1, address=0x20, read_timeout_s=0.05)
+
+    with pytest.raises(ChirpTimeoutError):
+        sensor.read_moisture()
+
+
+def test_busy_timeout_not_triggered(mock_bus):
+    mock_bus.read_byte_data.side_effect = [1, 1, 1, 0]
+    mock_bus.read_word_data.side_effect = [0x1000, 0x2000]
+
+    sensor = Chirp(bus=1, address=0x20, read_timeout_s=1.0)
+
+    value = sensor.read_moisture()
+    assert value == ((0x2000 >> 8) | ((0x2000 & 0xFF) << 8))
+
+
+@pytest.mark.parametrize("method", ["read_temperature_c", "read_light"])
+def test_timeout_on_all_read_methods(mock_bus, method):
+    mock_bus.read_byte_data.return_value = 1  # always busy
+    mock_bus.read_word_data.return_value = 0x1234
+
+    sensor = Chirp(bus=1, address=0x20, read_timeout_s=0.05)
+
+    with pytest.raises(ChirpTimeoutError):
+        getattr(sensor, method)()
+
+
+def test_timeout_error_message_contains_address(mock_bus):
+    mock_bus.read_byte_data.return_value = 1
+    mock_bus.read_word_data.return_value = 0x1234
+
+    sensor = Chirp(bus=1, address=0x42, read_timeout_s=0.01)
+
+    with pytest.raises(ChirpTimeoutError) as exc:
+        sensor.read_moisture()
+
+    assert "0x42" in str(exc.value)
