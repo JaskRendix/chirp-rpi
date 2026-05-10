@@ -23,11 +23,20 @@ def load_sensor(args: argparse.Namespace) -> Chirp:
     dry = args.dry if args.dry is not None else cfg.dry
     wet = args.wet if args.wet is not None else cfg.wet
 
+    busy_sleep = args.busy_sleep if args.busy_sleep is not None else cfg.busy_sleep
+    read_timeout_s = args.timeout if args.timeout is not None else cfg.read_timeout_s
+
     calibration = None
     if dry is not None and wet is not None:
         calibration = MoistureCalibration(dry, wet)
 
-    return Chirp(bus=bus, address=address, calibration=calibration)
+    return Chirp(
+        bus=bus,
+        address=address,
+        calibration=calibration,
+        busy_sleep=busy_sleep,
+        read_timeout_s=read_timeout_s,
+    )
 
 
 def cmd_read(args: argparse.Namespace) -> None:
@@ -147,6 +156,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bus", type=int, help="I2C bus number")
     parser.add_argument("--dry", type=int, help="Dry calibration value")
     parser.add_argument("--wet", type=int, help="Wet calibration value")
+    parser.add_argument(
+        "--busy-sleep", type=float, help="Busy polling interval in seconds"
+    )
+    parser.add_argument("--timeout", type=float, help="Read timeout in seconds")
 
     sub = parser.add_subparsers(dest="command")
 

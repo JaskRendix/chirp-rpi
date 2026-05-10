@@ -19,6 +19,9 @@ class Config:
     dry: int | None = None
     wet: int | None = None
 
+    busy_sleep: float = 0.01
+    read_timeout_s: float = 1.0
+
     mqtt_host: str = "localhost"
     mqtt_port: int = 1883
     mqtt_base: str = "home/chirp/sensor"
@@ -47,6 +50,8 @@ def load_config() -> Config:
     cfg.address = data.get("address", cfg.address)
     cfg.dry = data.get("dry", cfg.dry)
     cfg.wet = data.get("wet", cfg.wet)
+    cfg.busy_sleep = data.get("busy_sleep", cfg.busy_sleep)
+    cfg.read_timeout_s = data.get("read_timeout_s", cfg.read_timeout_s)
 
     # MQTT
     cfg.mqtt_host = data.get("mqtt_host", cfg.mqtt_host)

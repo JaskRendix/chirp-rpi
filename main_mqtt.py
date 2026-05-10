@@ -39,6 +39,8 @@ def main() -> None:
         bus=cfg.bus,
         address=cfg.address,
         calibration=calibration,
+        busy_sleep=cfg.busy_sleep,
+        read_timeout_s=cfg.read_timeout_s,
     )
 
     client_id = f"chirp-{socket.gethostname()}"

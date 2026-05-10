@@ -23,6 +23,8 @@ def create_exporter() -> Callable[[float], None]:
         bus=cfg.bus,
         address=cfg.address,
         calibration=calibration,
+        busy_sleep=cfg.busy_sleep,
+        read_timeout_s=cfg.read_timeout_s,
     )
 
     g_moist = Gauge("chirp_moisture_raw", "Raw moisture reading")

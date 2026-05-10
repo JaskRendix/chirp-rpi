@@ -18,6 +18,11 @@ address = 0x20
 dry = 240
 wet = 750
 
+# Busy‑flag polling interval (seconds)
+busy_sleep = 0.01
+
+# Maximum time to wait for sensor readiness (seconds)
+read_timeout_s = 1.0
 
 # ----------------
 # MQTT settings
