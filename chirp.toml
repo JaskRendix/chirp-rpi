@@ -52,3 +52,19 @@ prom_port = 9100
 
 # Port where the REST API listens
 rest_port = 8000
+
+# ----------------
+# SoilAgent settings
+# ----------------
+
+# 1.0 = no smoothing
+smoothing_alpha = 1.0
+
+# Moisture jump that resets history
+watering_threshold = 3.0
+
+# Minimum hours of history required for drying-rate estimation
+min_hours_for_rate = 1.0
+
+# Optional persistence file
+# persist_path = "/var/lib/chirp/soil_history.json"

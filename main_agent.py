@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 from chirp_sensor.agent import SoilAgent
 from chirp_sensor.config import Config, load_config
@@ -24,7 +25,13 @@ if __name__ == "__main__":
         read_timeout_s=cfg.read_timeout_s,
     )
 
-    agent = SoilAgent(sensor)
+    agent = SoilAgent(
+        sensor,
+        smoothing_alpha=cfg.smoothing_alpha,
+        watering_threshold=cfg.watering_threshold,
+        min_hours_for_rate=cfg.min_hours_for_rate,
+        persist_path=Path(cfg.persist_path) if cfg.persist_path else None,
+    )
 
     try:
         while True:
