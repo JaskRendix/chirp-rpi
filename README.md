@@ -23,6 +23,8 @@ Hardware design by Albertas Mickėnas (Catnip Electronics):
 - I²C address read/write
 - Deep‑sleep and wake support
 - Context‑manager support
+- Busy‑flag polling interval (`busy_sleep`)
+- Read timeout with retry (`read_timeout_s`)
 
 ### Additional tools
 - SoilAgent for drying‑rate estimation and moisture‑level prediction
@@ -69,6 +71,9 @@ address = 0x20
 
 dry = 240
 wet = 750
+
+busy_sleep = 0.01
+read_timeout_s = 1.0
 
 mqtt_host = "localhost"
 mqtt_port = 1883
@@ -227,6 +232,8 @@ sensor = Chirp(
     bus=1,
     address=0x20,
     calibration=MoistureCalibration(240, 750),
+    busy_sleep=0.01,
+    read_timeout_s=1.0,
 )
 ```
 
