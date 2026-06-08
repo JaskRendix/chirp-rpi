@@ -4,6 +4,23 @@ version = "0.1.0"
 description = "Chirp soil sensor driver and tools"
 requires-python = ">=3.12"
 
+dependencies = [
+    "smbus2",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "prometheus_client",
+    "paho-mqtt",
+    "python-dateutil"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov"
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 
