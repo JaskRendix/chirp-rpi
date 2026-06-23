@@ -13,6 +13,7 @@ dist/
 build/
 
 # Test artifacts (no coverage)
+.coverage
 .pytest_cache/
 
 # IDE/editor files
